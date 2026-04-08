@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brand Pulse Pro | 品牌聲量競品分析</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #09090b;
+      --bg-secondary: #18181b;
+      --bg-card: #1f1f23;
+      --bg-elevated: #27272a;
+      --accent-1: #6366f1;
+      --accent-2: #8b5cf6;
+      --accent-3: #06b6d4;
+      --accent-4: #f59e0b;
+      --positive: #22c55e;
+      --neutral: #eab308;
+      --negative: #ef4444;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --border: #3f3f46;
+      --border-light: #52525b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans TC', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 100% 80% at 10% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 80% 60% at 90% 100%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .animate-slide { animation: slideUp 0.4s ease-out both; }
+    .animate-fade { animation: fadeIn 0.3s ease-out both; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    /* PDF Report Styles */
+    .pdf-report {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      width: 800px;
+      background: #ffffff;
+      color: #1a1a2e;
+      font-family: 'Noto Sans TC', sans-serif;
+      padding: 40px;
+    }
+    .pdf-report * {
+      color: #1a1a2e !important;
+    }
+    .pdf-header {
+      text-align: center;
+      border-bottom: 3px solid #6366f1;
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .pdf-header h1 {
+      font-size: 28px;
+      font-weight: 900;
+      color: #6366f1 !important;
+      margin-bottom: 8px;
+    }
+    .pdf-header p {
+      font-size: 14px;
+      color: #666 !important;
+    }
+    .pdf-section {
+      margin-bottom: 28px;
+      page-break-inside: avoid;
+    }
+    .pdf-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #6366f1 !important;
+      border-bottom: 2px solid #e5e5e5;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+    .pdf-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .pdf-stat-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .pdf-stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: #6366f1 !important;
+    }
+    .pdf-stat-label {
+      font-size: 12px;
+      color: #666 !important;
+      text-transform: uppercase;
+    }
+    .pdf-sentiment-bar {
+      display: flex;
+      height: 24px;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .pdf-sentiment-positive { background: #22c55e; }
+    .pdf-sentiment-neutral { background: #eab308; }
+    .pdf-sentiment-negative { background: #ef4444; }
+    .pdf-sentiment-legend {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .pdf-mention-item {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 4px solid #6366f1;
+    }
+    .pdf-mention-rank {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: #6366f1;
+      color: #fff !important;
+      border-radius: 6px;
+      text-align: center;
+      line-height: 28px;
+      font-weight: 700;
+      margin-right: 12px;
+    }
+    .pdf-mention-topic {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .pdf-mention-summary {
+      font-size: 13px;
+      color: #666 !important;
+      margin-top: 8px;
+    }
+    .pdf-comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .pdf-comparison-table th,
+    .pdf-comparison-table td {
+      padding: 12px;
+      border: 1px solid #e5e5e5;
+      text-align: center;
+    }
+    .pdf-comparison-table th {
+      background: #f0f0f5;
+      font-weight: 600;
+    }
+    .pdf-insight-item {
+      background: #f0f4ff;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      border-left: 4px solid #6366f1;
+    }
+    .pdf-recommendation-item {
+      background: #f0fff4;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      border-left: 4px solid #22c55e;
+    }
+    .pdf-footer {
+      text-align: center;
+      font-size: 11px;
+      color: #999 !important;
+      border-top: 1px solid #e5e5e5;
+      padding-top: 20px;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef } = React;
+    const { jsPDF } = window.jspdf;
+
+    const BRAND_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899'];
+    
+    const TIME_PRESETS = [
+      { label: '近 7 天', value: '7d', days: 7 },
+      { label: '近 30 天', value: '30d', days: 30 },
+      { label: '近 3 個月', value: '3m', days: 90 },
+      { label: '近 6 個月', value: '6m', days: 180 },
+      { label: '近 1 年', value: '1y', days: 365 },
+      { label: '自訂範圍', value: 'custom', days: null }
+    ];
+
+    const Spinner = ({ size = 20 }) => (
+      <div style={{
+        width: size, height: size,
+        border: '2px solid var(--border)',
+        borderTopColor: 'var(--accent-1)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite'
+      }} />
+    );
+
+    const Tabs = ({ tabs, active, onChange }) => (
+      <div style={{
+        display: 'flex', gap: '4px', padding: '4px',
+        background: 'var(--bg-secondary)', borderRadius: '12px', marginBottom: '24px'
+      }}>
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => onChange(tab.id)}
+            style={{
+              flex: 1, padding: '12px 20px', fontSize: '14px', fontWeight: '600',
+              border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
+              background: active === tab.id ? 'var(--accent-1)' : 'transparent',
+              color: active === tab.id ? '#fff' : 'var(--text-secondary)'
+            }}>
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+    );
+
+    const StatCard = ({ label, value, color }) => (
+      <div style={{
+        background: 'var(--bg-card)', borderRadius: '16px', padding: '24px',
+        border: '1px solid var(--border)'
+      }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+        <div style={{ fontSize: '32px', fontWeight: '900', color: color || 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{value}</div>
+      </div>
+    );
+
+    const MentionItem = ({ item, rank }) => (
+      <div style={{
+        display: 'flex', gap: '16px', padding: '20px',
+        background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)'
+      }}>
+        <div style={{
+          width: '40px', height: '40px', borderRadius: '10px',
+          background: rank <= 3 ? 'var(--accent-1)' : 'var(--bg-elevated)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontWeight: '900', fontSize: '18px', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0
+        }}>{rank}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: '600', marginBottom: '6px' }}>{item.topic}</div>
+          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{item.summary}</div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📊 提及 {item.count} 次</span>
+            <span style={{ fontSize: '12px', color: item.sentiment === 'positive' ? 'var(--positive)' : item.sentiment === 'negative' ? 'var(--negative)' : 'var(--neutral)' }}>
+              {item.sentiment === 'positive' ? '😊 正面' : item.sentiment === 'negative' ? '😟 負面' : '😐 中性'}
+            </span>
+            {item.platforms && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📍 {item.platforms.join(', ')}</span>}
+          </div>
+        </div>
+      </div>
+    );
+
+    // PDF Report Component (hidden, used for export)
+    const PDFReport = React.forwardRef(({ results }, ref) => {
+      if (!results) return null;
+      
+      const mainBrand = results.mainBrand;
+      const totalSentiment = (mainBrand.sentiment?.positive || 0) + (mainBrand.sentiment?.neutral || 0) + (mainBrand.sentiment?.negative || 0) || 1;
+      
+      return (
+        <div ref={ref} className="pdf-report">
+          {/* Header */}
+          <div className="pdf-header">
+            <h1>📈 Brand Pulse Pro 分析報告</h1>
+            <p>{mainBrand.brandName} • {results.dateRange} • 生成於 {results.analyzedAt}</p>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="pdf-section">
+            <div className="pdf-section-title">📊 聲量總覽</div>
+            <div className="pdf-stats-grid">
+              <div className="pdf-stat-card">
+                <div className="pdf-stat-value">{mainBrand.overallScore || '-'}</div>
+                <div className="pdf-stat-label">聲量分數</div>
+              </div>
+              <div className="pdf-stat-card">
+                <div className="pdf-stat-value">{mainBrand.totalMentions || '-'}</div>
+                <div className="pdf-stat-label">總提及數</div>
+              </div>
+              <div className="pdf-stat-card">
+                <div className="pdf-stat-value" style={{ color: mainBrand.sentimentScore > 0 ? '#22c55e' : '#ef4444' }}>
+                  {mainBrand.sentimentScore > 0 ? '+' : ''}{mainBrand.sentimentScore || 0}
+                </div>
+                <div className="pdf-stat-label">情緒分數</div>
+              </div>
+              <div className="pdf-stat-card">
+                <div className="pdf-stat-value">
+                  {Math.round((mainBrand.sentiment?.positive / totalSentiment) * 100)}%
+                </div>
+                <div className="pdf-stat-label">正面佔比</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sentiment Distribution */}
+          <div className="pdf-section">
+            <div className="pdf-section-title">😊 情緒分佈</div>
+            <div className="pdf-sentiment-bar">
+              <div className="pdf-sentiment-positive" style={{ width: `${(mainBrand.sentiment?.positive / totalSentiment) * 100}%` }}></div>
+              <div className="pdf-sentiment-neutral" style={{ width: `${(mainBrand.sentiment?.neutral / totalSentiment) * 100}%` }}></div>
+              <div className="pdf-sentiment-negative" style={{ width: `${(mainBrand.sentiment?.negative / totalSentiment) * 100}%` }}></div>
+            </div>
+            <div className="pdf-sentiment-legend">
+              <span>🟢 正面 {mainBrand.sentiment?.positive}</span>
+              <span>🟡 中性 {mainBrand.sentiment?.neutral}</span>
+              <span>🔴 負面 {mainBrand.sentiment?.negative}</span>
+            </div>
+          </div>
+
+          {/* Competitor Comparison */}
+          {results.brands.length > 1 && (
+            <div className="pdf-section">
+              <div className="pdf-section-title">⚔️ 競品比較</div>
+              <table className="pdf-comparison-table">
+                <thead>
+                  <tr>
+                    <th>品牌</th>
+                    <th>聲量分數</th>
+                    <th>總提及數</th>
+                    <th>正面</th>
+                    <th>負面</th>
+                    <th>情緒分數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.brands.map((brand, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: '600' }}>{brand.brandName}</td>
+                      <td>{brand.overallScore}</td>
+                      <td>{brand.totalMentions}</td>
+                      <td style={{ color: '#22c55e' }}>{brand.sentiment?.positive}</td>
+                      <td style={{ color: '#ef4444' }}>{brand.sentiment?.negative}</td>
+                      <td style={{ color: brand.sentimentScore > 0 ? '#22c55e' : '#ef4444' }}>
+                        {brand.sentimentScore > 0 ? '+' : ''}{brand.sentimentScore}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Top 10 Mentions */}
+          {mainBrand.topMentions?.length > 0 && (
+            <div className="pdf-section">
+              <div className="pdf-section-title">🔥 Top 10 熱門話題</div>
+              {mainBrand.topMentions.slice(0, 10).map((item, i) => (
+                <div key={i} className="pdf-mention-item">
+                  <span className="pdf-mention-rank">{i + 1}</span>
+                  <span className="pdf-mention-topic">{item.topic}</span>
+                  <span style={{ marginLeft: '12px', fontSize: '12px', color: '#666' }}>
+                    提及 {item.count} 次 • {item.sentiment === 'positive' ? '正面' : item.sentiment === 'negative' ? '負面' : '中性'}
+                  </span>
+                  <div className="pdf-mention-summary">{item.summary}</div>
+                  {item.insight && <div style={{ fontSize: '12px', color: '#6366f1', marginTop: '6px' }}>💡 {item.insight}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Key Insights */}
+          {mainBrand.keyInsights?.length > 0 && (
+            <div className="pdf-section">
+              <div className="pdf-section-title">💡 關鍵洞察</div>
+              {mainBrand.keyInsights.map((insight, i) => (
+                <div key={i} className="pdf-insight-item">{insight}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {mainBrand.recommendations?.length > 0 && (
+            <div className="pdf-section">
+              <div className="pdf-section-title">✅ 行動建議</div>
+              {mainBrand.recommendations.map((rec, i) => (
+                <div key={i} className="pdf-recommendation-item">{rec}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Time Analysis */}
+          {mainBrand.timeAnalysis && (
+            <div className="pdf-section">
+              <div className="pdf-section-title">📅 時間趨勢</div>
+              <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px', fontSize: '14px' }}>
+                <p><strong>趨勢方向：</strong> {mainBrand.timeAnalysis.trend}</p>
+                <p><strong>高峰期間：</strong> {mainBrand.timeAnalysis.peakPeriod}</p>
+                {mainBrand.timeAnalysis.keyEvents?.length > 0 && (
+                  <p><strong>關鍵事件：</strong> {mainBrand.timeAnalysis.keyEvents.join('、')}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="pdf-footer">
+            Brand Pulse Pro • Powered by Claude AI + Web Search • 此報告由 AI 自動生成，數據來源為公開網路資訊
+          </div>
+        </div>
+      );
+    });
+
+    function App() {
+      const [mainBrand, setMainBrand] = useState('');
+      const [competitors, setCompetitors] = useState(['', '', '']);
+      const [timePreset, setTimePreset] = useState('30d');
+      const [customDateFrom, setCustomDateFrom] = useState('');
+      const [customDateTo, setCustomDateTo] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [exporting, setExporting] = useState(false);
+      const [progress, setProgress] = useState({ current: 0, total: 0, brand: '' });
+      const [results, setResults] = useState(null);
+      const [activeTab, setActiveTab] = useState('overview');
+      const [error, setError] = useState('');
+      
+      const pdfRef = useRef(null);
+
+      const getDateRange = () => {
+        if (timePreset === 'custom') {
+          return { from: customDateFrom, to: customDateTo };
+        }
+        const preset = TIME_PRESETS.find(p => p.value === timePreset);
+        const to = new Date();
+        const from = new Date();
+        from.setDate(from.getDate() - preset.days);
+        return {
+          from: from.toISOString().split('T')[0],
+          to: to.toISOString().split('T')[0]
+        };
+      };
+
+      const formatDateRange = () => {
+        const { from, to } = getDateRange();
+        return `${from} ~ ${to}`;
+      };
+
+      const exportPDF = async () => {
+        if (!results || !pdfRef.current) return;
+        
+        setExporting(true);
+        
+        try {
+          // Move element into view temporarily
+          const element = pdfRef.current;
+          element.style.left = '0';
+          element.style.position = 'fixed';
+          element.style.top = '0';
+          element.style.zIndex = '-1';
+          
+          // Wait for render
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Capture as canvas
+          const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+          
+          // Reset element position
+          element.style.left = '-9999px';
+          element.style.position = 'absolute';
+          
+          // Create PDF
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = canvas.width;
+          const imgHeight = canvas.height;
+          const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+          const imgX = (pdfWidth - imgWidth * ratio) / 2;
+          
+          // Calculate pages needed
+          const pageHeight = pdfHeight * (imgWidth / pdfWidth);
+          let heightLeft = imgHeight;
+          let position = 0;
+          let page = 1;
+          
+          // Add first page
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight * (pdfWidth / imgWidth));
+          heightLeft -= pageHeight;
+          
+          // Add additional pages if needed
+          while (heightLeft > 0) {
+            position -= pdfHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position * (pdfWidth / imgWidth), pdfWidth, imgHeight * (pdfWidth / imgWidth));
+            heightLeft -= pageHeight;
+            page++;
+          }
+          
+          // Download
+          const fileName = `Brand_Pulse_${results.mainBrand.brandName}_${new Date().toISOString().split('T')[0]}.pdf`;
+          pdf.save(fileName);
+          
+        } catch (err) {
+          console.error('PDF export error:', err);
+          alert('PDF 匯出失敗，請稍後再試');
+        } finally {
+          setExporting(false);
+        }
+      };
+
+      const analyzeBrand = async (brandName, dateRange) => {
+        const systemPrompt = `你是專業的品牌聲量分析師。請使用網路搜尋工具，搜尋關於「${brandName}」在 ${dateRange.from} 到 ${dateRange.to} 期間的網路討論、新聞、評價。
+
+請進行多次搜尋以獲得完整資料：
+1. "${brandName} 評價 ${dateRange.to.slice(0,7)}"
+2. "${brandName} PTT Dcard"
+3. "${brandName} 新聞 最新"
+4. "${brandName} 討論 社群"
+
+分析所有結果後，請以下列 JSON 格式回覆（只回傳 JSON）：
+
+{
+  "brandName": "${brandName}",
+  "dateRange": "${dateRange.from} ~ ${dateRange.to}",
+  "overallScore": 0到100的整體聲量分數,
+  "totalMentions": 估計總提及數,
+  "sentiment": {
+    "positive": 正面數量,
+    "neutral": 中性數量,
+    "negative": 負面數量
+  },
+  "sentimentScore": -100到100的情緒分數,
+  "topMentions": [
+    {
+      "rank": 1到10,
+      "topic": "話題標題",
+      "summary": "這個話題在討論什麼（30-50字）",
+      "count": 提及次數,
+      "sentiment": "positive/neutral/negative",
+      "platforms": ["PTT", "Facebook", "News"],
+      "insight": "這個話題的商業洞察（20-30字）"
+    }
+  ],
+  "platformBreakdown": [
+    { "platform": "社群媒體", "percentage": 數字, "trend": "up/down/stable" },
+    { "platform": "新聞媒體", "percentage": 數字, "trend": "up/down/stable" },
+    { "platform": "論壇討論", "percentage": 數字, "trend": "up/down/stable" }
+  ],
+  "keyInsights": [
+    "關鍵洞察1（一句話）",
+    "關鍵洞察2（一句話）",
+    "關鍵洞察3（一句話）"
+  ],
+  "recommendations": [
+    "建議行動1",
+    "建議行動2"
+  ],
+  "timeAnalysis": {
+    "peakPeriod": "聲量高峰期間描述",
+    "trend": "上升/下降/持平",
+    "keyEvents": ["重要事件1", "重要事件2"]
+  }
+}
+
+請確保 topMentions 包含 10 項最多人討論的話題，並依照熱度排序。`;
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4000,
+            messages: [{ role: 'user', content: systemPrompt }],
+            tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+          })
+        });
+
+        if (!response.ok) throw new Error(`API 錯誤: ${response.status}`);
+        
+        const data = await response.json();
+        let textContent = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+        
+        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        throw new Error('無法解析回應');
+      };
+
+      const runAnalysis = async () => {
+        if (!mainBrand.trim()) {
+          setError('請輸入主要品牌名稱');
+          return;
+        }
+
+        setLoading(true);
+        setError('');
+        setResults(null);
+
+        const brandsToAnalyze = [mainBrand, ...competitors.filter(c => c.trim())];
+        const dateRange = getDateRange();
+        const allResults = [];
+
+        try {
+          for (let i = 0; i < brandsToAnalyze.length; i++) {
+            setProgress({ current: i + 1, total: brandsToAnalyze.length, brand: brandsToAnalyze[i] });
+            const result = await analyzeBrand(brandsToAnalyze[i], dateRange);
+            allResults.push(result);
+          }
+
+          let comparisonInsights = null;
+          if (allResults.length > 1) {
+            const sorted = [...allResults].sort((a, b) => (b.overallScore || 0) - (a.overallScore || 0));
+            comparisonInsights = {
+              leader: sorted[0]?.brandName,
+              leaderScore: sorted[0]?.overallScore,
+              rankings: sorted.map((b, i) => ({ rank: i + 1, brand: b.brandName, score: b.overallScore }))
+            };
+          }
+
+          setResults({
+            brands: allResults,
+            mainBrand: allResults[0],
+            competitors: allResults.slice(1),
+            comparison: comparisonInsights,
+            analyzedAt: new Date().toLocaleString('zh-TW'),
+            dateRange: formatDateRange()
+          });
+          setActiveTab('overview');
+
+        } catch (err) {
+          console.error(err);
+          setError(`分析失敗：${err.message}`);
+        } finally {
+          setLoading(false);
+          setProgress({ current: 0, total: 0, brand: '' });
+        }
+      };
+
+      const updateCompetitor = (index, value) => {
+        const newComp = [...competitors];
+        newComp[index] = value;
+        setCompetitors(newComp);
+      };
+
+      const tabs = [
+        { id: 'overview', label: '總覽', icon: '📊' },
+        { id: 'comparison', label: '競品比較', icon: '⚔️' },
+        { id: 'mentions', label: 'Top 10 話題', icon: '🔥' },
+        { id: 'insights', label: '洞察建議', icon: '💡' }
+      ];
+
+      return (
+        <div style={{ minHeight: '100vh', padding: '32px 20px', maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Hidden PDF Report */}
+          <PDFReport ref={pdfRef} results={results} />
+
+          {/* Header */}
+          <header style={{ textAlign: 'center', marginBottom: '48px' }} className="animate-slide">
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div style={{
+                width: '56px', height: '56px',
+                background: 'linear-gradient(135deg, var(--accent-1), var(--accent-2))',
+                borderRadius: '16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '28px', boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)'
+              }}>📈</div>
+              <div style={{ textAlign: 'left' }}>
+                <h1 style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-0.5px' }}>Brand Pulse Pro</h1>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>品牌聲量 × 競品分析 × 趨勢追蹤</p>
+              </div>
+            </div>
+          </header>
+
+          {/* Input Section */}
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: '20px', padding: '32px',
+            border: '1px solid var(--border)', marginBottom: '32px'
+          }}>
+            {/* Brands Input */}
+            <div style={{ marginBottom: '28px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                品牌名稱
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ position: 'relative' }}>
+                  <input type="text" value={mainBrand} onChange={(e) => setMainBrand(e.target.value)}
+                    placeholder="主要品牌 *"
+                    style={{
+                      width: '100%', padding: '14px 16px', paddingLeft: '44px',
+                      fontSize: '15px', background: 'var(--bg-secondary)',
+                      border: '2px solid var(--accent-1)', borderRadius: '12px',
+                      color: 'var(--text-primary)', outline: 'none'
+                    }}
+                  />
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '18px' }}>🏢</span>
+                </div>
+                {competitors.map((comp, i) => (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <input type="text" value={comp} onChange={(e) => updateCompetitor(i, e.target.value)}
+                      placeholder={`競品 ${i + 1}（選填）`}
+                      style={{
+                        width: '100%', padding: '14px 16px', paddingLeft: '44px',
+                        fontSize: '15px', background: 'var(--bg-secondary)',
+                        border: '2px solid var(--border)', borderRadius: '12px',
+                        color: 'var(--text-primary)', outline: 'none', transition: 'border-color 0.2s'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = BRAND_COLORS[i + 1]}
+                      onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                    />
+                    <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '18px' }}>⚔️</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Selection */}
+            <div style={{ marginBottom: '28px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                時間範圍
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                {TIME_PRESETS.map(preset => (
+                  <button key={preset.value} onClick={() => setTimePreset(preset.value)}
+                    style={{
+                      padding: '10px 18px', fontSize: '14px', fontWeight: '500',
+                      border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
+                      background: timePreset === preset.value ? 'var(--accent-1)' : 'var(--bg-secondary)',
+                      color: timePreset === preset.value ? '#fff' : 'var(--text-secondary)'
+                    }}>
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              
+              {timePreset === 'custom' && (
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <input type="date" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)}
+                    style={{
+                      padding: '12px 16px', fontSize: '14px',
+                      background: 'var(--bg-secondary)', border: '2px solid var(--border)',
+                      borderRadius: '10px', color: 'var(--text-primary)', outline: 'none'
+                    }}
+                  />
+                  <span style={{ color: 'var(--text-muted)' }}>至</span>
+                  <input type="date" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)}
+                    style={{
+                      padding: '12px 16px', fontSize: '14px',
+                      background: 'var(--bg-secondary)', border: '2px solid var(--border)',
+                      borderRadius: '10px', color: 'var(--text-primary)', outline: 'none'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Analyze Button */}
+            <button onClick={runAnalysis} disabled={loading}
+              style={{
+                width: '100%', padding: '18px', fontSize: '17px', fontWeight: '700',
+                background: loading ? 'var(--bg-elevated)' : 'linear-gradient(135deg, var(--accent-1), var(--accent-2))',
+                border: 'none', borderRadius: '14px', color: '#fff',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                boxShadow: loading ? 'none' : '0 8px 32px rgba(99, 102, 241, 0.25)', transition: 'all 0.2s'
+              }}>
+              {loading ? (<><Spinner /> 分析中... {progress.current}/{progress.total} - {progress.brand}</>) : (<>🚀 開始分析</>)}
+            </button>
+
+            {error && (
+              <div style={{
+                marginTop: '16px', padding: '16px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '12px', color: 'var(--negative)', fontSize: '14px'
+              }}>{error}</div>
+            )}
+          </div>
+
+          {/* Results */}
+          {results && (
+            <div className="animate-fade">
+              {/* Export PDF Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+                <button onClick={exportPDF} disabled={exporting}
+                  style={{
+                    padding: '12px 24px', fontSize: '14px', fontWeight: '600',
+                    background: exporting ? 'var(--bg-elevated)' : 'linear-gradient(135deg, #ef4444, #f97316)',
+                    border: 'none', borderRadius: '10px', color: '#fff',
+                    cursor: exporting ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 4px 16px rgba(239, 68, 68, 0.25)', transition: 'all 0.2s'
+                  }}>
+                  {exporting ? (<><Spinner size={16} /> 產生報告中...</>) : (<>📄 匯出 PDF 報告</>)}
+                </button>
+              </div>
+
+              {/* Tabs */}
+              <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+
+              {/* Tab Content */}
+              <div style={{ background: 'var(--bg-card)', borderRadius: '20px', padding: '32px', border: '1px solid var(--border)' }}>
+                
+                {/* Overview Tab */}
+                {activeTab === 'overview' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
+                      <div>
+                        <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '4px' }}>{results.mainBrand.brandName}</h2>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>{results.dateRange}</p>
+                      </div>
+                      <div style={{ padding: '8px 16px', background: 'var(--bg-elevated)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                        分析於 {results.analyzedAt}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                      <StatCard label="聲量分數" value={results.mainBrand.overallScore || '-'} color="var(--accent-1)" />
+                      <StatCard label="總提及數" value={results.mainBrand.totalMentions || '-'} />
+                      <StatCard label="情緒分數" value={results.mainBrand.sentimentScore || 0} color={results.mainBrand.sentimentScore > 0 ? 'var(--positive)' : 'var(--negative)'} />
+                      <StatCard label="正面佔比" value={`${Math.round((results.mainBrand.sentiment?.positive / ((results.mainBrand.sentiment?.positive || 0) + (results.mainBrand.sentiment?.neutral || 0) + (results.mainBrand.sentiment?.negative || 0) || 1)) * 100)}%`} color="var(--positive)" />
+                    </div>
+
+                    <div style={{ marginBottom: '32px' }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>情緒分佈</h3>
+                      <div style={{ display: 'flex', height: '24px', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-elevated)' }}>
+                        <div style={{ width: `${(results.mainBrand.sentiment?.positive / ((results.mainBrand.sentiment?.positive || 0) + (results.mainBrand.sentiment?.neutral || 0) + (results.mainBrand.sentiment?.negative || 0) || 1)) * 100}%`, background: 'var(--positive)' }} />
+                        <div style={{ width: `${(results.mainBrand.sentiment?.neutral / ((results.mainBrand.sentiment?.positive || 0) + (results.mainBrand.sentiment?.neutral || 0) + (results.mainBrand.sentiment?.negative || 0) || 1)) * 100}%`, background: 'var(--neutral)' }} />
+                        <div style={{ width: `${(results.mainBrand.sentiment?.negative / ((results.mainBrand.sentiment?.positive || 0) + (results.mainBrand.sentiment?.neutral || 0) + (results.mainBrand.sentiment?.negative || 0) || 1)) * 100}%`, background: 'var(--negative)' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '13px' }}>
+                        <span><span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: 'var(--positive)', marginRight: '6px' }}></span>正面 {results.mainBrand.sentiment?.positive}</span>
+                        <span><span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: 'var(--neutral)', marginRight: '6px' }}></span>中性 {results.mainBrand.sentiment?.neutral}</span>
+                        <span><span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: 'var(--negative)', marginRight: '6px' }}></span>負面 {results.mainBrand.sentiment?.negative}</span>
+                      </div>
+                    </div>
+
+                    {results.mainBrand.timeAnalysis && (
+                      <div style={{ padding: '24px', background: 'var(--bg-secondary)', borderRadius: '16px' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>📅 時間趨勢分析</h3>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '15px' }}>
+                          <div><strong>趨勢：</strong> {results.mainBrand.timeAnalysis.trend}</div>
+                          <div><strong>高峰期：</strong> {results.mainBrand.timeAnalysis.peakPeriod}</div>
+                          {results.mainBrand.timeAnalysis.keyEvents?.length > 0 && (
+                            <div><strong>關鍵事件：</strong> {results.mainBrand.timeAnalysis.keyEvents.join('、')}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Comparison Tab */}
+                {activeTab === 'comparison' && (
+                  <div>
+                    {results.brands.length > 1 ? (
+                      <>
+                        <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px' }}>品牌聲量比較</h3>
+                        
+                        <div style={{ marginBottom: '32px' }}>
+                          <h4 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>聲量排名</h4>
+                          {results.comparison?.rankings.map((r, i) => (
+                            <div key={i} style={{
+                              display: 'flex', alignItems: 'center', gap: '16px',
+                              padding: '16px', background: i === 0 ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-secondary)',
+                              borderRadius: '12px', marginBottom: '8px',
+                              border: i === 0 ? '1px solid var(--accent-1)' : '1px solid transparent'
+                            }}>
+                              <div style={{
+                                width: '36px', height: '36px', borderRadius: '8px',
+                                background: i === 0 ? 'var(--accent-1)' : 'var(--bg-elevated)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: '800', fontSize: '16px'
+                              }}>{r.rank}</div>
+                              <div style={{ flex: 1, fontWeight: '600' }}>{r.brand}</div>
+                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '20px', fontWeight: '700', color: BRAND_COLORS[i] }}>
+                                {r.score}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div>
+                          <h4 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>詳細數據</h4>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                                  <th style={{ padding: '12px', textAlign: 'left', color: 'var(--text-muted)' }}>品牌</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', color: 'var(--text-muted)' }}>聲量分數</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', color: 'var(--text-muted)' }}>總提及</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', color: 'var(--text-muted)' }}>正面</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', color: 'var(--text-muted)' }}>負面</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', color: 'var(--text-muted)' }}>情緒分數</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {results.brands.map((brand, i) => (
+                                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <td style={{ padding: '16px 12px', fontWeight: '600' }}>
+                                      <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', background: BRAND_COLORS[i], marginRight: '10px' }}></span>
+                                      {brand.brandName}
+                                    </td>
+                                    <td style={{ padding: '16px 12px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>{brand.overallScore}</td>
+                                    <td style={{ padding: '16px 12px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>{brand.totalMentions}</td>
+                                    <td style={{ padding: '16px 12px', textAlign: 'right', color: 'var(--positive)' }}>{brand.sentiment?.positive}</td>
+                                    <td style={{ padding: '16px 12px', textAlign: 'right', color: 'var(--negative)' }}>{brand.sentiment?.negative}</td>
+                                    <td style={{ padding: '16px 12px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: brand.sentimentScore > 0 ? 'var(--positive)' : 'var(--negative)' }}>
+                                      {brand.sentimentScore > 0 ? '+' : ''}{brand.sentimentScore}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚔️</div>
+                        <p>請添加競品品牌以啟用比較功能</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Top 10 Mentions Tab */}
+                {activeTab === 'mentions' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '700' }}>🔥 Top 10 熱門話題</h3>
+                      <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{results.mainBrand.brandName}</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {results.mainBrand.topMentions?.slice(0, 10).map((item, i) => (
+                        <MentionItem key={i} item={item} rank={i + 1} />
+                      ))}
+                    </div>
+
+                    {(!results.mainBrand.topMentions || results.mainBrand.topMentions.length === 0) && (
+                      <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+                        <p>暫無足夠數據生成 Top 10 話題</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Insights Tab */}
+                {activeTab === 'insights' && (
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px' }}>💡 關鍵洞察 & 建議</h3>
+                    
+                    {results.mainBrand.keyInsights?.length > 0 && (
+                      <div style={{ marginBottom: '32px' }}>
+                        <h4 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>關鍵發現</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {results.mainBrand.keyInsights.map((insight, i) => (
+                            <div key={i} style={{
+                              padding: '20px 24px', background: 'var(--bg-secondary)',
+                              borderRadius: '12px', borderLeft: '4px solid var(--accent-1)', fontSize: '15px'
+                            }}>{insight}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {results.mainBrand.recommendations?.length > 0 && (
+                      <div>
+                        <h4 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>行動建議</h4>
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          {results.mainBrand.recommendations.map((rec, i) => (
+                            <div key={i} style={{
+                              padding: '20px 24px',
+                              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(6, 182, 212, 0.1))',
+                              borderRadius: '12px', border: '1px solid rgba(34, 197, 94, 0.2)',
+                              display: 'flex', alignItems: 'flex-start', gap: '16px'
+                            }}>
+                              <span style={{ fontSize: '20px' }}>✅</span>
+                              <span style={{ fontSize: '15px' }}>{rec}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {results.brands.length > 1 && (
+                      <div style={{ marginTop: '32px', padding: '24px', background: 'var(--bg-secondary)', borderRadius: '16px' }}>
+                        <h4 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>競品分析摘要</h4>
+                        <p style={{ fontSize: '15px', lineHeight: '1.8' }}>
+                          在本次分析的 {results.brands.length} 個品牌中，<strong style={{ color: 'var(--accent-1)' }}>{results.comparison?.leader}</strong> 以 <strong>{results.comparison?.leaderScore}</strong> 分領先。
+                          {results.brands[0].sentimentScore > 0 
+                            ? ` ${results.mainBrand.brandName} 整體呈現正面聲量，建議持續強化現有優勢。`
+                            : ` ${results.mainBrand.brandName} 存在負面聲量，建議關注主要議題並制定回應策略。`
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer style={{ textAlign: 'center', marginTop: '48px', padding: '20px', color: 'var(--text-muted)', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace" }}>
+            Brand Pulse Pro • Powered by Claude AI + Web Search
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
